@@ -30,11 +30,29 @@ kubectl apply -n argocd -f "https://raw.githubusercontent.com/argoproj/argo-cd/s
 
 kubectl rollout status deployment/argocd-server -n argocd --timeout=300s
 
-until kubectl get secret argocd-initial-admin-secret -n argocd >/dev/null 2>&1; do
+#until kubectl get secret argocd-initial-admin-secret -n argocd >/dev/null 2>&1; do
+#  sleep 2
+#done
+
+#get password
+#kubectl get secret argocd-initial-admin-secret -n argocd \
+#  -o jsonpath="{.data.password}" | base64 -d > /tmp/argopass
+
+
+#exposition (ouverture) des ports 
+#kubectl port-forward svc/argocd-server -n argocd 8080:443 &
+#sleep 10 
+
+# Attendre que le pod argocd-server soit prêt
+#kubectl rollout status deployment/argocd-server -n argocd --timeout=300s
+until kubectl get pods -n argocd | grep argocd-server | grep -q "1/1"; do
   sleep 2
 done
 
-#get password
+# Récupérer le mot de passe admin
+until kubectl get secret argocd-initial-admin-secret -n argocd >/dev/null 2>&1; do
+  sleep 2
+done
 kubectl get secret argocd-initial-admin-secret -n argocd \
   -o jsonpath="{.data.password}" | base64 -d > /tmp/argopass
 
@@ -43,9 +61,14 @@ curl -sSL -o argocd "https://github.com/argoproj/argo-cd/releases/latest/downloa
 chmod +x argocd
 mv argocd /usr/local/bin/
 
-#exposition (ouverture) des ports 
-kubectl port-forward svc/argocd-server -n argocd 8080:443 &
-sleep 10 
+# Lancer le port-forward en arrière-plan
+kubectl port-forward svc/argocd-server -n argocd 8080:443 > /dev/null 2>&1 &
+sleep 10
+
+# Tester si le port est bien ouvert
+until nc -z localhost 8080; do
+  sleep 2
+done
 
 #connexion CLI argo
 argocd login localhost:8080 --username admin --password $(cat /tmp/argopass) --insecure
