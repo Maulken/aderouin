@@ -1,0 +1,19 @@
+Vagrant.configure("2") do |config|
+  
+  config.vm.define "aderouinS" do |aderouinS|
+    aderouinS.vm.box = "ubuntu/focal64"
+    aderouinS.vm.synced_folder ".", "/vagrant", type: "virtualbox"
+    aderouinS.vm.network "private_network", ip: "192.168.56.110"
+    aderouinS.vm.hostname = "aderouinS"
+
+    aderouinS.vm.provider "virtualbox" do |vb|
+      vb.memory = "2048"
+      vb.cpus = 2
+      vb.name = "aderouinS"
+    end
+
+    aderouinS.vm.provision "shell", path: "./scripts/provision-server.sh"
+  end
+
+end
+
