@@ -27,7 +27,35 @@ kubectl create namespace dev
 # Install Argo CD
 kubectl apply -n argocd -f "https://raw.githubusercontent.com/argoproj/argo-cd/stable/manifests/install.yaml"
 
+
+kubectl rollout status deployment/argocd-server -n argocd --timeout=300s
+
+until kubectl get secret argocd-initial-admin-secret -n argocd >/dev/null 2>&1; do
+  sleep 2
+done
+
+#get password
+kubectl get secret argocd-initial-admin-secret -n argocd \
+  -o jsonpath="{.data.password}" | base64 -d > /tmp/argopass
+
 # Install Argo CD CLI
 curl -sSL -o argocd "https://github.com/argoproj/argo-cd/releases/latest/download/argocd-linux-amd64"
 chmod +x argocd
 mv argocd /usr/local/bin/
+
+#exposition (ouverture) des ports 
+kubectl port-forward svc/argocd-server -n argocd 8080:443 &
+sleep 10 
+
+#connexion CLI argo
+argocd login localhost:8080 --username admin --password $(cat /tmp/argopass) --insecure
+
+# Créer l'application Argo CD
+argocd app create aderouin \
+  --repo https://github.com/Maulken/aderouin \
+  --path P3 \
+  --dest-server https://kubernetes.default.svc \
+  --dest-namespace dev
+
+# Synchronisation automatique
+argocd app sync aderouin
